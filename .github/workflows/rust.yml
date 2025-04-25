@@ -1,0 +1,65 @@
+name: Rust
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.head_ref || github.sha }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    name: Check formatting
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup rust toolchain
+        uses: ./.github/actions/setup-rust
+
+      - name: Check formatting (rustfmt)
+        run: cargo fmt --all --check
+
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        toolchain: [stable]
+    name: Build test
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup rust toolchain
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Build test
+        run: cargo check --profile=dev
+
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        toolchain: [stable]
+    name: Test
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup rust toolchain
+        uses: ./.github/actions/setup-rust
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Build test
+        run: cargo test --profile=dev
