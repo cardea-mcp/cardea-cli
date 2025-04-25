@@ -19,7 +19,6 @@ pub async fn run_sse_proxy(
 ) -> Result<(), Box<dyn StdError>> {
     info!("Running SSE proxy with URL: {}", config.url);
 
-
     // Create SSE transport with default client
     // Note: We're not using custom headers right now, but we could extend this in the future
     if !config.headers.is_empty() {
