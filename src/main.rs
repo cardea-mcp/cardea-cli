@@ -14,6 +14,7 @@ use proxy::run_sse_proxy;
 #[derive(Parser)]
 #[command(
     name = "openmcp",
+    version,
     about = "OpenMCP Server Proxy CLI",
     subcommand_required = true,
     arg_required_else_help = true,

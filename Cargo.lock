@@ -1381,9 +1381,9 @@ dependencies = [
 
 [[package]]
 name = "rmcp-proxy"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bb4834742ac4f557d9055c240f5eb1971245202643064794a0d01cc36c954c3"
+checksum = "94352195def23136151cd6e2b18e0517497f309a710100933a40d7276f01cd40"
 dependencies = [
  "axum",
  "clap",
