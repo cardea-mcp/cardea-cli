@@ -99,7 +99,11 @@ main() {
 	check_os_arch
 	_downloader "https://github.com/decentralized-mcp/proxy/releases/download/$VERSION/openmcp-$RELEASE_PKG"
 	tar zxvf "openmcp-$RELEASE_PKG"
-	mv "openmcp-$RELEASE_FILE/openmcp" /usr/local/bin/
+	if [ -d "$HOME/bin" ] && [ -w "$HOME/bin" ]; then
+		mv "openmcp-$RELEASE_FILE/openmcp" "$HOME/bin/"
+	else
+		mv "openmcp-$RELEASE_FILE/openmcp" /usr/local/bin/
+	fi
 	rm -rf "openmcp-$RELEASE_FILE"
 	rm -rf "openmcp-$RELEASE_PKG"
 }
