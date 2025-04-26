@@ -8,13 +8,15 @@
 
 ## Usage
 
-### Installing
+### Quick install
 
 ```bash
-cargo install --git https://github.com/decentralized-mcp/proxy.git
+curl -sSfL 'https://raw.githubusercontent.com/decentralized-mcp/proxy/refs/heads/master/install.sh' | sudo bash
 ```
 
-### Building
+Or, [download the pre-built binary](https://github.com/decentralized-mcp/proxy/releases/latest) for your platform. Unzip and drop the `openmcp` binary anywhere in your path.
+
+### Building from source
 
 ```bash
 cargo build --release
