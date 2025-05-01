@@ -14,8 +14,8 @@ use tokio_util::sync::CancellationToken;
 use tracing::info;
 
 pub async fn run_sse_proxy(
-    setting: SseServerSettings,
     config: SseClientConfig,
+    sse_settings: SseServerSettings,
 ) -> Result<(), Box<dyn StdError>> {
     info!("Running SSE proxy with URL: {}", config.url);
 
@@ -52,11 +52,11 @@ pub async fn run_sse_proxy(
 
     // Configure SSE server
     let config = SseServerConfig {
-        bind: setting.bind_addr,
+        bind: sse_settings.bind_addr,
         sse_path: "/sse".to_string(),
         post_path: "/message".to_string(),
         ct: CancellationToken::new(),
-        // sse_keep_alive: sse_settings.keep_alive,
+        middlewares: sse_settings.middlewares,
     };
 
     // Start the SSE server
