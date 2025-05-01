@@ -1,15 +1,18 @@
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
+use rmcp::transport::sse_server::MiddlewareFn;
 use rmcp_proxy::{
     run_sse_client, run_sse_server,
     sse_client::SseClientConfig,
     sse_server::{SseServerSettings, StdioServerParameters},
 };
-use std::{collections::HashMap, error::Error, net::SocketAddr, time::Duration};
+use std::{collections::HashMap, error::Error, net::SocketAddr, sync::Arc, time::Duration};
 use tracing::debug;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod proxy;
 use proxy::run_sse_proxy;
+mod auth;
+use auth::auth_middleware;
 
 #[derive(Parser)]
 #[command(
@@ -53,6 +56,10 @@ enum Commands {
         /// Forward remote SSE server or local stdio server as an SSE server.
         #[arg(short = 'p')]
         publish: Option<String>,
+
+        // Enable security for the server, such as token authentication.
+        #[arg(long = "security", action = ArgAction::SetTrue)]
+        security: bool,
     },
 }
 
@@ -84,13 +91,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .init();
 
     let cli = Cli::parse();
+    let mut middleware: Option<Arc<Vec<MiddlewareFn>>> = None;
+
     match cli.command {
         Commands::Run {
             headers,
             mut args,
             env_vars,
             publish,
+            security,
         } => {
+            if security {
+                const BASE_URL: &str = "http://127.0.0.1:8081";
+                middleware = Some(Arc::new(vec![auth_middleware(BASE_URL.to_string())]));
+            }
             if args.len() > 0 {
                 if let Some(publish_str) = publish {
                     let command = args.remove(0);
@@ -121,6 +135,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     let sse_settings = SseServerSettings {
                         bind_addr: bind_addr.parse::<SocketAddr>()?,
                         keep_alive: Some(Duration::from_secs(15)),
+                        middlewares: middleware,
                     };
                     debug!("Starting stdio client and SSE server");
                     run_sse_server(stdio_params, sse_settings).await?;
@@ -164,9 +179,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         let exposed_settings = SseServerSettings {
                             bind_addr: bind_addr.parse::<SocketAddr>()?,
                             keep_alive: Some(Duration::from_secs(15)),
+                            middlewares: middleware,
                         };
                         debug!("Starting SSE server proxy to other SSE server");
-                        run_sse_proxy(exposed_settings, remote_config).await?;
+                        run_sse_proxy(remote_config, exposed_settings).await?;
                     } else {
                         debug!("Starting SSE client and stdio server");
                         run_sse_client(remote_config).await?;
