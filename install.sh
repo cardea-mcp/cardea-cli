@@ -67,7 +67,7 @@ check_os_arch() {
 		'Darwin')
 			case ${ARCH} in
 				'x86_64') ARCH="x86_64" ;;
-				'arm64' | 'arm' | 'aarch64') ARCH="arm64" ;;
+				'arm64' | 'arm' | 'aarch64') ARCH="aarch64" ;;
 				*)
 					error "Detected ${OS}-${ARCH} - currently unsupported"
 					eprintf "Use --os and --arch to specify the OS and ARCH"
