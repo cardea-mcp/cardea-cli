@@ -39,7 +39,7 @@ _downloader() {
 }
 
 get_latest_release() {
-	echo "v0.1.1"
+	echo "latest"
 }
 
 VERSION=$(get_latest_release)
