@@ -38,12 +38,6 @@ _downloader() {
 	fi
 }
 
-get_latest_release() {
-	echo "latest"
-}
-
-VERSION=$(get_latest_release)
-
 check_os_arch() {
 	[ -z "${ARCH}" ] && ARCH=$(uname -m)
 	[ -z "${OS}" ] && OS=$(uname)
@@ -95,7 +89,7 @@ check_os_arch() {
 }
 
 main() {
-	info "Fetching OpenMCP-$VERSION"
+	info "Fetching OpenMCP"
 	check_os_arch
 	_downloader "https://github.com/decentralized-mcp/proxy/releases/latest/download/openmcp-$RELEASE_PKG"
 	tar zxvf "openmcp-$RELEASE_PKG"
