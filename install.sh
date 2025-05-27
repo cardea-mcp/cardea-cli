@@ -38,12 +38,6 @@ _downloader() {
 	fi
 }
 
-get_latest_release() {
-	echo "v0.1.1"
-}
-
-VERSION=$(get_latest_release)
-
 check_os_arch() {
 	[ -z "${ARCH}" ] && ARCH=$(uname -m)
 	[ -z "${OS}" ] && OS=$(uname)
@@ -80,7 +74,7 @@ check_os_arch() {
 		'Windows_NT' | MINGW*)
 			error "Detected ${OS} - currently unsupported"
 			eprintf "Please download OpenMCP manually from the release page:"
-			eprintf "https://github.com/decentralized-mcp/proxy/releases/latest"
+			eprintf "https://github.com/decentralized-mcp/proxy/releases/latest/"
 			exit 1
 			;;
 		*)
@@ -95,9 +89,9 @@ check_os_arch() {
 }
 
 main() {
-	info "Fetching OpenMCP-$VERSION"
+	info "Fetching OpenMCP"
 	check_os_arch
-	_downloader "https://github.com/decentralized-mcp/proxy/releases/download/$VERSION/openmcp-$RELEASE_PKG"
+	_downloader "https://github.com/decentralized-mcp/proxy/releases/latest/download/openmcp-$RELEASE_PKG"
 	tar zxvf "openmcp-$RELEASE_PKG"
 	if [ -d "$HOME/bin" ] && [ -w "$HOME/bin" ]; then
 		mv "openmcp-$RELEASE_FILE/openmcp" "$HOME/bin/"
