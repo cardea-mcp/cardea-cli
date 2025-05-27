@@ -22,11 +22,11 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             image: ubuntu:20.04
             runner: ubuntu-latest
-            name: x86_64-unknown-ubuntu20.04-gnu
+            name: x86_64-unknown-linux-gnu
           - target: aarch64-unknown-linux-gnu
             image: ubuntu:20.04
             runner: ubuntu-24.04-arm
-            name: aarch64-unknown-ubuntu20.04-gnu
+            name: aarch64-unknown-linux-gnu
     env:
       package_name: openmcp
 
@@ -69,10 +69,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-24.04-arm
           - target: x86_64-apple-darwin
             os: macos-latest
           - target: aarch64-apple-darwin
