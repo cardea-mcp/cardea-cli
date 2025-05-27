@@ -14,8 +14,57 @@ on:
   workflow_dispatch:
 
 jobs:
+  build-legacy-artifacts:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            image: ubuntu:20.04
+            runner: ubuntu-latest
+            name: x86_64-unknown-ubuntu20.04-gnu
+          - target: aarch64-unknown-linux-gnu
+            image: ubuntu:20.04
+            runner: ubuntu-24.04-arm
+            name: aarch64-unknown-ubuntu20.04-gnu
+    env:
+      package_name: openmcp
+
+    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup rust toolchain
+        uses: ./.github/actions/setup-rust
+        with:
+          target: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Set archive name
+        id: archive
+        run: >
+          echo "archive_name=${{ env.package_name }}-${{ matrix.name }}" >> "$GITHUB_ENV"
+
+      - name: Create Archive Folder
+        run: mkdir ${{ env.archive_name }}
+
+      - name: Copy Unix Artifact
+        run: |
+          cp target/${{ matrix.target }}/release/${{ env.package_name }} ${{ env.archive_name }}
+          tar zcvf ${{ env.archive_name }}.tgz ${{ env.archive_name }}
+          ls -alh ${{ env.archive_name }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ env.archive_name }}.tgz
+          if-no-files-found: error
+
   build-artifacts:
-    #if: github.head_ref == 'release' && github.event.pull_request.merged == true
     strategy:
       fail-fast: false
       matrix:
@@ -42,10 +91,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           target: ${{ matrix.target }}
-
-      - name: Install libssl-dev
-        if: "${{ matrix.target == 'aarch64-unknown-linux-gnu' }}"
-        run: sudo apt-get install -y libssl-dev
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
@@ -126,6 +171,7 @@ jobs:
 
   publish-crate:
     needs: [release]
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
