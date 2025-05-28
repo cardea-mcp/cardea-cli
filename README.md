@@ -71,3 +71,11 @@ openmcp run -p 8001:http://127.0.0.1:8000/sse
 // Run the inspector to verify SSE servers on ports 8000 and 8001
 npx @modelcontextprotocol/inspector
 ```
+
+## Security
+
+Use openmcp run `--security` in the same way as openmcp run, with all other parameters unchanged.
+
+The process for obtaining the authentication token is described in the diagram below.
+
+![Authentication Token Flow](./openmcp_security_flow.png)
