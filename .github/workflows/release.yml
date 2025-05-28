@@ -32,6 +32,8 @@ jobs:
 
     runs-on: ${{ matrix.runner }}
     name: ${{ matrix.name }}
+    container:
+      image: ${{ matrix.image }}
     steps:
       - uses: actions/checkout@v4
 
