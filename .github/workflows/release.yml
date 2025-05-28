@@ -41,7 +41,7 @@ jobs:
         run: |
           apt update && apt install -y curl build-essential
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Setup rust toolchain
         uses: ./.github/actions/setup-rust
