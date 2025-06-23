@@ -79,3 +79,12 @@ Use openmcp run `--security` in the same way as openmcp run, with all other para
 The process for obtaining the authentication token is described in the diagram below.
 
 ![Authentication Token Flow](./openmcp_security_flow.png)
+
+## Extend TSP protocol
+
+- Message mode
+- Verify mode
+The client VID is used solely for generating a bearer token, which is then verified by the openmcp middleware.
+
+![Extend TSP](./extend_tsp_flow.jpg)
+
