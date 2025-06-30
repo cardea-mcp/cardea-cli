@@ -2,6 +2,8 @@
 
 ## Verify mode
 
+[![TspVerifyDemo preview](TspVerifyDemo.gif)](TspVerifyDemo.mov)
+
 To run OpenMCP with TSP verification mode, use the following command:
 
 ```bash
