@@ -10,6 +10,13 @@ use reqwest::Client;
 use rmcp::transport::sse_server::MiddlewareFn;
 use serde::Serialize;
 use serde_json::json;
+use std::sync::Arc;
+use tsp_sdk::{ AsyncSecureStore, definitions::RelationshipStatus};
+
+#[async_trait::async_trait]
+pub trait KeyVerifier: Send + Sync {
+    async fn verify(&self, key: &str) -> Result<(), String>;
+}
 
 #[derive(Clone)]
 pub struct ApiKeyVerifier {
@@ -24,9 +31,17 @@ impl ApiKeyVerifier {
             base_url,
         }
     }
+}
 
-    async fn verify_api_key(&self, api_key: &str) -> Result<(), String> {
-        let url: String = format!("{}/reverse-lookup", self.base_url);
+#[derive(Serialize)]
+struct ReverseLookupRequest {
+    api_key: String,
+}
+
+#[async_trait::async_trait]
+impl KeyVerifier for ApiKeyVerifier {
+    async fn verify(&self, api_key: &str) -> Result<(), String> {
+        let url = format!("{}/reverse-lookup", self.base_url);
         let req_body = ReverseLookupRequest {
             api_key: api_key.to_string(),
         };
@@ -47,13 +62,41 @@ impl ApiKeyVerifier {
     }
 }
 
-#[derive(Serialize)]
-struct ReverseLookupRequest {
-    api_key: String,
+#[derive(Clone)]
+pub struct TspKeyVerifier {
+    pub store: AsyncSecureStore,
+    pub vid: String,
+}
+
+impl TspKeyVerifier {
+    pub fn new(store: AsyncSecureStore, vid: String) -> Self {
+        TspKeyVerifier { store, vid }
+    }
+}
+
+#[async_trait::async_trait]
+impl KeyVerifier for TspKeyVerifier {
+    async fn verify(&self, peer_vid: &str) -> Result<(), String> {
+        let result = self.store.get_relation_status_for_vid_pair(&self.vid, peer_vid);
+
+        match result {
+            Ok(status) => {
+                match status {
+                    RelationshipStatus::Bidirectional { .. } => {
+                        Ok(())
+                    }
+                    _ => {
+                        Err("Relation is not bidirectional".to_string())
+                    }
+                }
+            }
+            Err(e) => Err(format!("Failed to get relation status: {:?}", e)),
+        }
+    }
 }
 
 pub async fn key_verify_layer(
-    State(verifier): State<ApiKeyVerifier>,
+    State(verifier): State<Arc<dyn KeyVerifier>>,
     req: Request<Body>,
     next: Next,
 ) -> Response {
@@ -61,7 +104,7 @@ pub async fn key_verify_layer(
         Some(header_value) => match header_value.to_str() {
             Ok(auth_header) => {
                 if let Some(key) = auth_header.strip_prefix("Bearer ") {
-                    match verifier.verify_api_key(key).await {
+                    match verifier.verify(key).await {
                         Ok(_) => next.run(req).await,
                         Err(msg) => {
                             let body = json!({ "code": 401, "message": msg });
@@ -90,8 +133,7 @@ pub async fn key_verify_layer(
     }
 }
 
-pub fn auth_middleware(base_url: String) -> MiddlewareFn {
-    let verifier = ApiKeyVerifier::new(base_url);
+pub fn auth_middleware(verifier: Arc<dyn KeyVerifier>) -> MiddlewareFn {
     Box::new(move |router: Router| {
         router.route_layer(from_fn_with_state(verifier.clone(), key_verify_layer))
     })

@@ -82,7 +82,9 @@ The process for obtaining the authentication token is described in the diagram b
 
 ## Extend TSP protocol
 
-- Message mode
+[(more dtail)](TSP_EXTEND.md)
+
+- Message mode (not ready)
 - Verify mode
 The client VID is used solely for generating a bearer token, which is then verified by the openmcp middleware.
 

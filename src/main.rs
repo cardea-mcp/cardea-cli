@@ -6,13 +6,20 @@ use rmcp_proxy::{
     sse_server::{SseServerSettings, StdioServerParameters},
 };
 use std::{collections::HashMap, error::Error, net::SocketAddr, sync::Arc, time::Duration};
-use tracing::debug;
+use tracing::{debug, error, info};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod proxy;
 use proxy::run_sse_proxy;
 mod auth;
-use auth::auth_middleware;
+use auth::{ApiKeyVerifier, KeyVerifier, auth_middleware};
+mod tsp;
+use tsp::start_tsp_endpoint;
+
+use crate::auth::TspKeyVerifier;
+
+const AUTH_API_ADDR: &str = "http://127.0.0.1:8081";
+const TSP_ENDPOINT: &str = "tcp://127.0.0.1:1337";
 
 #[derive(Parser)]
 #[command(
@@ -60,6 +67,10 @@ enum Commands {
         // Enable security for the server, such as token authentication.
         #[arg(long = "security", action = ArgAction::SetTrue)]
         security: bool,
+
+        /// Extend TSP protocol to [verify | message] mode.
+        #[arg(long = "tsp", value_name = "MODE", action = ArgAction::Append, value_delimiter = ',', value_parser = ["verify", "message"], conflicts_with = "security")]
+        tsp_modes: Vec<String>,
     },
 }
 
@@ -89,9 +100,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .with(tracing_subscriber::fmt::layer())
         .init();
-
     let cli = Cli::parse();
-    let mut middleware: Option<Arc<Vec<MiddlewareFn>>> = None;
+    let mut middlewares: Vec<MiddlewareFn> = Vec::new();
 
     match cli.command {
         Commands::Run {
@@ -100,11 +110,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
             env_vars,
             publish,
             security,
+            tsp_modes,
         } => {
             if security {
-                const BASE_URL: &str = "http://127.0.0.1:8081";
-                middleware = Some(Arc::new(vec![auth_middleware(BASE_URL.to_string())]));
+                let verifier = Arc::new(ApiKeyVerifier::new(AUTH_API_ADDR.to_string()))
+                    as Arc<dyn KeyVerifier>;
+                middlewares.push(auth_middleware(verifier));
             }
+
+            for modes in &tsp_modes {
+                if modes == "message" {
+                    debug!("TSP mode: message is not supported yet, skipping");
+                } else {
+                    let (store, vid) = start_tsp_endpoint(TSP_ENDPOINT).await?;
+                    let store = store.read().await.clone();
+                    let verifier =
+                        Arc::new(TspKeyVerifier::new(store, vid)) as Arc<dyn KeyVerifier>;
+                    middlewares.push(auth_middleware(verifier));
+                }
+            }
+
             if args.len() > 0 {
                 if let Some(publish_str) = publish {
                     let command = args.remove(0);
@@ -113,14 +138,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         [ip, port] => format!("{}:{}", ip, port),
                         [port] => format!("127.0.0.1:{}", port),
                         _ => {
-                            eprintln!(
-                                "Error: Invalid publish format with command. Expected <exposed_sse_ip>[option]:<exposed_sse_port>"
+                            error!(
+                                "Invalid publish format with command. Expected <exposed_sse_ip>[option]:<exposed_sse_port>"
                             );
                             std::process::exit(1);
                         }
                     };
-                    print!("Bind address: {}", bind_addr);
-
                     let mut env_map: HashMap<String, String> = HashMap::new();
                     for (key, value) in &env_vars {
                         env_map.insert(key.clone(), value.clone());
@@ -135,13 +158,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     let sse_settings = SseServerSettings {
                         bind_addr: bind_addr.parse::<SocketAddr>()?,
                         keep_alive: Some(Duration::from_secs(15)),
-                        middlewares: middleware,
+                        middlewares: Some(Arc::new(middlewares)),
                     };
-                    debug!("Starting stdio client and SSE server");
+                    info!(
+                        "SSE server listening on {} to local stdio server",
+                        sse_settings.bind_addr
+                    );
                     run_sse_server(stdio_params, sse_settings).await?;
                 } else {
-                    eprintln!(
-                        "Error: Run stdio server without publish parameter. Expected <exposed_sse_ip>[option]:<exposed_sse_port>"
+                    error!(
+                        "Run stdio server without publish parameter. Expected <exposed_sse_ip>[option]:<exposed_sse_port>"
                     );
                     std::process::exit(1);
                 }
@@ -159,19 +185,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         ),
                         [ip, port] => (None, format!("{}:{}", ip, port)),
                         _ => {
-                            eprintln!(
-                                "Error: Invalid publish format with command. Expected <exposed_sse_ip>[option]:<exposed_sse_port>:<remote_sse_ip>:<remote_sse_port>"
+                            error!(
+                                "Invalid publish format with command. Expected <exposed_sse_ip>[option]:<exposed_sse_port>:<remote_sse_ip>:<remote_sse_port>"
                             );
                             std::process::exit(1);
                         }
                     };
+
                     let mut headers_map: HashMap<String, String> = HashMap::new();
                     for (key, value) in &headers {
                         headers_map.insert(key.clone(), value.clone());
                     }
 
                     let remote_config = SseClientConfig {
-                        url: remote_addr,
+                        url: remote_addr.clone(),
                         headers: headers_map,
                     };
 
@@ -179,16 +206,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         let exposed_settings = SseServerSettings {
                             bind_addr: bind_addr.parse::<SocketAddr>()?,
                             keep_alive: Some(Duration::from_secs(15)),
-                            middlewares: middleware,
+                            middlewares: Some(Arc::new(middlewares)),
                         };
-                        debug!("Starting SSE server proxy to other SSE server");
+                        info!(
+                            "SSE server listening on {}, proxying to {}",
+                            exposed_settings.bind_addr, remote_addr
+                        );
                         run_sse_proxy(remote_config, exposed_settings).await?;
                     } else {
-                        debug!("Starting SSE client and stdio server");
+                        info!(
+                            "Connecting to remote SSE server at {} as stdio MCP client",
+                            remote_addr
+                        );
                         run_sse_client(remote_config).await?;
                     }
                 } else {
-                    eprintln!("Error: Missing both publish parameter and command.");
+                    error!("Missing both publish parameter and command.");
                     std::process::exit(1);
                 }
             }
