@@ -16,20 +16,20 @@ use auth::auth_middleware;
 
 #[derive(Parser)]
 #[command(
-    name = "openmcp",
+    name = "cardea",
     version,
-    about = "OpenMCP Server Proxy CLI",
+    about = "Cardea - MCP Server Proxy CLI",
     subcommand_required = true,
     arg_required_else_help = true,
     after_help = "Examples:\n\n \
         SSE > SSE : Proxy an SSE stream to a remote SSE server:\n \
-        openmcp run -p exposed_host[default=localhost]:exposed_port:remote_sse_host:remote_sse_port\n\n \
+        cardea run -p exposed_host[default=localhost]:exposed_port:remote_sse_host:remote_sse_port\n\n \
         STDIO > SSE : Expose a local stdio server as an SSE server:\n \
-        openmcp run -p exposed_host[default=localhost]:exposed_port\n \
-        openmcp run -p 0.0.0.0:8080 -- npx -y @modelcontextprotocol/server-everythingt\n \
-        openmcp run -p :8080 -- python mcp_server.py\n\n \
+        cardea run -p exposed_host[default=localhost]:exposed_port\n \
+        cardea run -p 0.0.0.0:8080 -- npx -y @modelcontextprotocol/server-everythingt\n \
+        cardea run -p :8080 -- python mcp_server.py\n\n \
         SSE > STDIO : Connect to a remote server over SSE and expose it as a stdio server:\n \
-        openmcp run -p remote_sse_host:remote_sse_port\n\n \
+        cardea run -p remote_sse_host:remote_sse_port\n\n \
         STDIO > STDIO : This case is currently unused and not implemented.\n \
         "
 )]

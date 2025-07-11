@@ -1,12 +1,12 @@
 [package]
-name = "openmcp"
+name = "cardea"
 version = "0.1.4"
 edition = "2024"
-description = "OpenMCP Server Proxy CLI"
+description = "Cardea - MCP Server Proxy CLI"
 license = "Apache-2.0"
-documentation = "https://docs.rs/openmcp"
-homepage = "https://github.com/decentralized-mcp/proxy"
-repository = "https://github.com/decentralized-mcp/proxy"
+documentation = "https://docs.rs/cardea"
+homepage = "https://github.com/cardea-mcp/cardea-cli"
+repository = "https://github.com/cardea-mcp/cardea-cli"
 
 [dependencies]
 rmcp-proxy = { git = "https://github.com/decentralized-mcp/mcp-proxy.git", branch = "feat-middleware" }

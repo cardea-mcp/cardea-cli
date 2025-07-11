@@ -73,8 +73,8 @@ check_os_arch() {
 			;;
 		'Windows_NT' | MINGW*)
 			error "Detected ${OS} - currently unsupported"
-			eprintf "Please download OpenMCP manually from the release page:"
-			eprintf "https://github.com/decentralized-mcp/proxy/releases/latest/"
+			eprintf "Please download Cardea manually from the release page:"
+			eprintf "https://github.com/cardea-mcp/cardea-cli/releases/latest/"
 			exit 1
 			;;
 		*)
@@ -89,17 +89,17 @@ check_os_arch() {
 }
 
 main() {
-	info "Fetching OpenMCP"
+	info "Fetching Cardea"
 	check_os_arch
-	_downloader "https://github.com/decentralized-mcp/proxy/releases/latest/download/openmcp-$RELEASE_PKG"
-	tar zxvf "openmcp-$RELEASE_PKG"
+	_downloader "https://github.com/cardea-mcp/cardea-cli/releases/latest/download/cardea-$RELEASE_PKG"
+	tar zxvf "cardea-$RELEASE_PKG"
 	if [ -d "$HOME/bin" ] && [ -w "$HOME/bin" ]; then
-		mv "openmcp-$RELEASE_FILE/openmcp" "$HOME/bin/"
+		mv "cardea-$RELEASE_FILE/cardea" "$HOME/bin/"
 	else
-		mv "openmcp-$RELEASE_FILE/openmcp" /usr/local/bin/
+		mv "cardea-$RELEASE_FILE/cardea" /usr/local/bin/
 	fi
-	rm -rf "openmcp-$RELEASE_FILE"
-	rm -rf "openmcp-$RELEASE_PKG"
+	rm -rf "cardea-$RELEASE_FILE"
+	rm -rf "cardea-$RELEASE_PKG"
 }
 
 
