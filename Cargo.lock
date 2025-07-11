@@ -215,7 +215,7 @@ checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 
 [[package]]
 name = "cardea"
-version = "0.1.4"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "axum",
