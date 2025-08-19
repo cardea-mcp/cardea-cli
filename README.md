@@ -79,3 +79,44 @@ Use cardea run `--security` in the same way as cardea run, with all other parame
 The process for obtaining the authentication token is described in the diagram below.
 
 ![Authentication Token Flow](./cardea_security_flow.png)
+
+### Setup the API Key Server
+
+```console
+# Alpha version, please build from source for the latest version
+git clone https://github.com/cardea-mcp/api-key-generator
+cd api-key-generator
+# Build the API Key Server
+cargo build --release
+
+# Run the API Key Server
+./target/release/api-key-server
+# Run the HTTP Server for generating API keys
+python3 -m http.server 8080
+```
+
+### Obtain the API Key
+
+1. Open the HTTP Server in your browser: `http://localhost:8080`
+2. Click on the "Generate API Key" button.
+3. Copy the generated API key `sk_...` from the page.
+
+### Start the Cardea CLI with Security
+
+```console
+# cardea run --security -p exposed_ip:exposed_port your-command
+# Take memory MCP as an example
+cardea run --security -p 8000 npx -y @modelcontextprotocol/server-memory
+```
+
+### Connect to the MCP Server with the API Key
+
+1. Start the MCP client
+    ```console
+    # Use inspector as an example
+    npx @modelcontextprotocol/inspector
+    ```
+2. Set the URL: `http://localhost:8000/sse`
+3. Click on the "Authentication" button.
+4. Paste the API key `sk_...` into the `Bearer Token` field.
+5. Click on the "Connect" button.
