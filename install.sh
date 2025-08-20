@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-set -e
+set -Eeuo pipefail
+IFS=$'\n\t'
 
 RED=$'\e[0;31m'
 GREEN=$'\e[0;32m'
@@ -39,8 +40,9 @@ _downloader() {
 }
 
 check_os_arch() {
-	[ -z "${ARCH}" ] && ARCH=$(uname -m)
-	[ -z "${OS}" ] && OS=$(uname)
+	# Use default-empty expansion to avoid set -u errors when ARCH/OS are unset
+	[ -z "${ARCH:-}" ] && ARCH=$(uname -m)
+	[ -z "${OS:-}" ] && OS=$(uname)
 	RELEASE_FILE="x86_64-unknown-linux-gnu"
 
 	case ${OS} in
@@ -88,20 +90,134 @@ check_os_arch() {
 	RELEASE_PKG="${RELEASE_FILE}.tgz"
 }
 
+update_shell_configs() {
+	local install_path=$1
+	local path_export="export PATH=\"$install_path:\$PATH\""
+	local path_check="# Check if $install_path is in PATH
+	if [[ \":\$PATH:\" != *\":$install_path:\"* ]]; then
+		$path_export
+		fi"
+
+		# Track if we updated any config
+		local updated=0
+
+		# Function to update a config file
+		update_config_file() {
+			local config_file=$1
+			local config_path="$HOME/$config_file"
+
+			if [ -f "$config_path" ] || [ "$config_file" = ".bash_profile" ] || [ "$config_file" = ".profile" ]; then
+				if ! grep -Fq "$install_path" "$config_path" 2>/dev/null; then
+					[ ! -f "$config_path" ] && touch "$config_path"
+					info "Adding $install_path to PATH in $config_file"
+					echo "" >> "$config_path"
+					echo "# Added by Cardea installer" >> "$config_path"
+					echo "$path_check" >> "$config_path"
+					updated=1
+				else
+					info "$install_path already in $config_file"
+				fi
+			fi
+		}
+
+		# Detect shell and update appropriate config files
+		local current_shell="${SHELL##*/}"
+
+		case "$current_shell" in
+			zsh)
+				# Prefer .zprofile for login shells, .zshrc for interactive
+				update_config_file ".zshrc"
+				update_config_file ".zprofile"
+				;;
+			bash)
+				# For bash, update .bashrc and .bash_profile
+				update_config_file ".bashrc"
+				update_config_file ".bash_profile"
+				;;
+			*)
+				# For other shells, update .profile
+				update_config_file ".profile"
+				;;
+		esac
+
+		return $updated
+	}
+
 main() {
 	info "Fetching Cardea"
 	check_os_arch
+
+	# Ensure required tools exist
+	if ! command -v tar >/dev/null 2>&1; then
+		error "tar not found"
+		eprintf "Please install tar and re-run the installer."
+		exit 1
+	fi
+
 	_downloader "https://github.com/cardea-mcp/cardea-cli/releases/latest/download/cardea-$RELEASE_PKG"
 	tar zxvf "cardea-$RELEASE_PKG"
-	if [ -d "$HOME/bin" ] && [ -w "$HOME/bin" ]; then
-		mv "cardea-$RELEASE_FILE/cardea" "$HOME/bin/"
+
+	# Choose install destination
+	local dest=""
+	case ${OS} in
+		Linux)
+			dest="${XDG_BIN_HOME:-$HOME/.local/bin}"
+			;;
+		Darwin)
+			dest="$HOME/bin"
+			;;
+		*)
+			dest="$HOME/bin"
+			;;
+	esac
+
+	mkdir -p "$dest" || true
+
+	do_install() {
+		if command -v install >/dev/null 2>&1; then
+			install -m 0755 "cardea-$RELEASE_FILE/cardea" "$1/"
+		else
+			cp "cardea-$RELEASE_FILE/cardea" "$1/"
+		fi
+	}
+
+	local installed_to=""
+	if [ -w "$dest" ]; then
+		do_install "$dest"
+		installed_to="$dest"
+		info "Cardea installed to $dest/cardea"
+		update_shell_configs "$dest"
+	elif [ -w "/usr/local/bin" ]; then
+		do_install "/usr/local/bin"
+		installed_to="/usr/local/bin"
+		info "Cardea installed to /usr/local/bin/cardea"
 	else
-		mv "cardea-$RELEASE_FILE/cardea" /usr/local/bin/
+		error "No writable install location found"
+		eprintf "Tried: $dest and /usr/local/bin"
+		eprintf "Re-run with appropriate permissions or choose a writable DEST in your PATH."
+		exit 1
 	fi
+
+	# Clean up temporary files
 	rm -rf "cardea-$RELEASE_FILE"
 	rm -rf "cardea-$RELEASE_PKG"
+
+	echo ""
+	echo "${GREEN}Installation successful!${NC}"
+
+	if [[ ":$PATH:" != *":$installed_to:"* ]]; then
+		echo ""
+		echo "${YELLOW}Note:${NC} $installed_to has been added (or ensured) in your shell configuration."
+		echo "To use cardea immediately, run one of the following:"
+		echo "  ${GREEN}source ~/.bashrc${NC}  (bash)"
+		echo "  ${GREEN}source ~/.zshrc${NC}   (zsh)"
+		echo "  Or start a new terminal session"
+	else
+		echo "Cardea is ready to use!"
+	fi
+
+	echo ""
+	echo "Run ${GREEN}cardea --help${NC} to get started"
 }
 
-
 main "$@"
-
